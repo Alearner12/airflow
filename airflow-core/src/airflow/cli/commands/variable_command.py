@@ -51,16 +51,14 @@ def _variable_mapper(var: Variable, show_values: bool = True, hide_sensitive: bo
     """
     result = {"key": var.key}
     
-    # Determine what to show for the value
-    if not show_values:
-        # Hide value completely
-        result["value"] = "***"
-    elif hide_sensitive:
-        # Use Airflow's secrets masker to redact the value
-        result["value"] = redact(var.val, name=var.key)
-    else:
-        # Show the actual value
-        result["value"] = var.val
+    # Only include the value if show_values is True
+    if show_values:
+        if hide_sensitive:
+            # Use Airflow's secrets masker to redact the value
+            result["value"] = redact(var.val, name=var.key)
+        else:
+            # Show the actual value
+            result["value"] = var.val
     
     return result
 

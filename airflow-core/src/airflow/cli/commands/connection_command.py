@@ -52,24 +52,7 @@ def _connection_mapper(conn: Connection, show_values: bool = True, hide_sensitiv
     :param show_values: If False, hide sensitive fields (password, URI, extra)
     :param hide_sensitive: If True, mask sensitive fields instead of showing them
     """
-    # Determine what to show for sensitive fields
-    if not show_values:
-        # Hide all sensitive values completely
-        password = "***"
-        uri = "***"
-        extra = "***"
-    elif hide_sensitive:
-        # Use Airflow's secrets masker to redact sensitive values
-        password = redact(conn.password, name="password")
-        uri = redact(conn.get_uri(), name="uri")
-        extra = redact(conn.extra, name="extra")
-    else:
-        # Show everything
-        password = conn.password
-        uri = conn.get_uri()
-        extra = conn.extra_dejson
-    
-    return {
+    result = {
         "id": conn.id,
         "conn_id": conn.conn_id,
         "conn_type": conn.conn_type,
@@ -77,13 +60,25 @@ def _connection_mapper(conn: Connection, show_values: bool = True, hide_sensitiv
         "host": conn.host,
         "schema": conn.schema,
         "login": conn.login,
-        "password": password,
         "port": conn.port,
         "is_encrypted": conn.is_encrypted,
         "is_extra_encrypted": conn.is_encrypted,
-        "extra_dejson": extra,
-        "get_uri": uri,
     }
+    
+    # Only include sensitive fields if show_values is True
+    if show_values:
+        if hide_sensitive:
+            # Use Airflow's secrets masker to redact sensitive values
+            result["password"] = redact(conn.password, name="password")
+            result["get_uri"] = redact(conn.get_uri(), name="uri")
+            result["extra_dejson"] = redact(conn.extra, name="extra")
+        else:
+            # Show everything
+            result["password"] = conn.password
+            result["get_uri"] = conn.get_uri()
+            result["extra_dejson"] = conn.extra_dejson
+    
+    return result
 
 
 @suppress_logs_and_warning
