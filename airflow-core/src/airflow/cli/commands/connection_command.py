@@ -44,9 +44,17 @@ from airflow.utils.providers_configuration_loader import providers_configuration
 from airflow.utils.session import create_session
 
 
-def _connection_mapper(conn: Connection, mask_sensitive: bool = True) -> dict[str, Any]:
-    """Map a Connection object to a dictionary, optionally masking sensitive values."""
-    result = {
+def _connection_mapper(
+    conn: Connection, show_values: bool = True, hide_sensitive: bool = False
+) -> dict[str, Any]:
+    """
+    Map a Connection object to a dictionary for display.
+
+    :param conn: Connection object
+    :param show_values: If True, include sensitive fields (password, URI, extra)
+    :param hide_sensitive: If True (and show_values is True), mask sensitive values
+    """
+    result: dict[str, Any] = {
         "id": conn.id,
         "conn_id": conn.conn_id,
         "conn_type": conn.conn_type,
@@ -54,15 +62,16 @@ def _connection_mapper(conn: Connection, mask_sensitive: bool = True) -> dict[st
         "host": conn.host,
         "schema": conn.schema,
         "login": conn.login,
-        "password": conn.password,
         "port": conn.port,
         "is_encrypted": conn.is_encrypted,
         "is_extra_encrypted": conn.is_encrypted,
-        "extra_dejson": conn.extra_dejson,
-        "get_uri": conn.get_uri(),
     }
-    if mask_sensitive:
-        result = cast(dict[str, Any], redact(result))
+    if show_values:
+        result["password"] = conn.password
+        result["extra_dejson"] = conn.extra_dejson
+        result["get_uri"] = conn.get_uri()
+        if hide_sensitive:
+            result = cast("dict[str, Any]", redact(result))
     return result
 
 
@@ -91,11 +100,12 @@ def connections_list(args):
         query = select(Connection)
         conns = session.scalars(query).all()
         show_values = getattr(args, "show_values", False)
+        hide_sensitive = getattr(args, "hide_sensitive", False)
 
         AirflowConsole().print_as(
             data=conns,
             output=args.output,
-            mapper=lambda c: _connection_mapper(c, mask_sensitive=not show_values),
+            mapper=lambda c: _connection_mapper(c, show_values=show_values, hide_sensitive=hide_sensitive),
         )
 
 

@@ -41,12 +41,22 @@ from airflow.utils.providers_configuration_loader import providers_configuration
 from airflow.utils.session import create_session, provide_session
 
 
-def _variable_mapper(var: Variable, show_values: bool = False) -> dict[str, Any]:
-    """Map a Variable object to a dictionary, optionally showing masked values."""
+def _variable_mapper(
+    var: Variable, show_values: bool = False, hide_sensitive: bool = False
+) -> dict[str, Any]:
+    """
+    Map a Variable object to a dictionary for display.
+
+    :param var: Variable object
+    :param show_values: If True, include the variable value
+    :param hide_sensitive: If True (and show_values is True), mask sensitive values
+    """
+    result: dict[str, Any] = {"key": var.key}
     if show_values:
-        result: dict[str, Any] = {"key": var.key, "value": var.val}
-        return cast(dict[str, Any], redact(result))
-    return {"key": var.key}
+        result["value"] = var.val
+        if hide_sensitive:
+            result = cast("dict[str, Any]", redact(result))
+    return result
 
 
 @suppress_logs_and_warning
@@ -56,10 +66,11 @@ def variables_list(args):
     with create_session() as session:
         variables = session.scalars(select(Variable)).all()
     show_values = getattr(args, "show_values", False)
+    hide_sensitive = getattr(args, "hide_sensitive", False)
     AirflowConsole().print_as(
         data=variables,
         output=args.output,
-        mapper=lambda x: _variable_mapper(x, show_values=show_values),
+        mapper=lambda x: _variable_mapper(x, show_values=show_values, hide_sensitive=hide_sensitive),
     )
 
 
