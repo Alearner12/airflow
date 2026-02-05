@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy import select
 
@@ -53,9 +53,10 @@ def _variable_mapper(
     """
     result: dict[str, Any] = {"key": var.key}
     if show_values:
-        result["value"] = var.val
         if hide_sensitive:
-            result = cast("dict[str, Any]", redact(result))
+            result["value"] = redact(var.val, var.key)
+        else:
+            result["value"] = var.val
     return result
 
 

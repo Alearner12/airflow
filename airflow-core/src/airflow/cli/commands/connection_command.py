@@ -23,7 +23,7 @@ import os
 import warnings
 from functools import cache
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy import select
@@ -67,11 +67,14 @@ def _connection_mapper(
         "is_extra_encrypted": conn.is_encrypted,
     }
     if show_values:
-        result["password"] = conn.password
-        result["extra_dejson"] = conn.extra_dejson
-        result["get_uri"] = conn.get_uri()
         if hide_sensitive:
-            result = cast("dict[str, Any]", redact(result))
+            result["password"] = redact(conn.password, "password") if conn.password else None
+            result["extra_dejson"] = redact(conn.extra_dejson)
+            result["get_uri"] = redact(conn.get_uri(), "password")
+        else:
+            result["password"] = conn.password
+            result["extra_dejson"] = conn.extra_dejson
+            result["get_uri"] = conn.get_uri()
     return result
 
 
@@ -88,7 +91,7 @@ def connections_get(args):
     AirflowConsole().print_as(
         data=[conn],
         output=args.output,
-        mapper=lambda c: _connection_mapper(c, mask_sensitive=False),
+        mapper=lambda c: _connection_mapper(c, show_values=True, hide_sensitive=False),
     )
 
 
